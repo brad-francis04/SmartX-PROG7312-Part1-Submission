@@ -1,0 +1,127 @@
+﻿.page {
+    max-width: 1200px;
+    margin: auto;
+    padding: 24px;
+    font-family: Arial, sans-serif;
+    color: #172033;
+}
+
+.hero {
+    color: white;
+    background: linear-gradient(135deg, #143d7a, #117a8b);
+    border-radius: 18px;
+    padding: 32px;
+    margin-bottom: 24px;
+}
+
+    .hero h1 {
+        margin: 8px 0;
+    }
+
+.eyebrow {
+    color: #a8f0ff;
+    font-weight: bold;
+}
+
+.pillars, .cards {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    margin-bottom: 24px;
+}
+
+.pillar, .panel, .stat-card {
+    border-radius: 14px;
+    padding: 20px;
+    border: 1px solid #d7deeb;
+    background: white;
+}
+
+    .pillar.active {
+        border: 2px solid #159947;
+        background: #edfff3;
+    }
+
+    .pillar.locked {
+        opacity: 0.65;
+        background: #f2f4f7;
+    }
+
+    .pillar a, button.primary {
+        display: inline-block;
+        background: #117a8b;
+        color: white;
+        border-radius: 7px;
+        padding: 10px 14px;
+        text-decoration: none;
+        border: none;
+        cursor: pointer;
+    }
+
+button {
+    border: none;
+    border-radius: 7px;
+    padding: 10px 14px;
+    cursor: pointer;
+    margin-top: 8px;
+}
+
+    button:disabled {
+        cursor: not-allowed;
+    }
+
+.panel {
+    margin: 20px 0;
+}
+
+label {
+    font-weight: bold;
+    display: block;
+    margin-top: 12px;
+}
+
+input, select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px;
+    margin-top: 5px;
+    border: 1px solid #aeb9ca;
+    border-radius: 7px;
+}
+
+.sensor {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 0;
+    border-bottom: 1px solid #d7deeb;
+}
+
+.actions {
+    min-width: 210px;
+}
+
+.stat-card strong {
+    font-size: 1.8rem;
+    color: #117a8b;
+}
+
+.message {
+    color: #087331;
+    font-weight: bold;
+}
+
+.problem {
+    color: #a52222;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    text-align: left;
+    padding: 10px;
+    border-bottom: 1px solid #d7deeb;
+}

@@ -1,0 +1,287 @@
+﻿@page "/"
+@using System.Net.Http.Json
+@using System.Net.Http.Headers
+@using Microsoft.AspNetCore.Components.Forms
+@using SmartX.Shared
+@inject HttpClient Http
+
+<PageTitle>Smart-X IoT</PageTitle>
+
+<div class="page">
+
+    <header class="hero">
+        <p class="eyebrow">PROG7312 · PART 1</p>
+        <h1>Smart-X IoT Mesh Ecosystem</h1>
+        <p>Sensor Data Ingestion Dashboard</p>
+    </header>
+
+    <section class="pillars">
+        <article class="pillar active">
+            <span>🟢 PART 1 · ACTIVE</span>
+            <h2>📡 Sensor Data Ingestion</h2>
+            <p>Register sensors, generate simulated telemetry, and attach files.</p>
+            <a href="#ingestion">Open Part 1 dashboard ↓</a>
+        </article>
+
+        <article class="pillar locked">
+            <span>🔒 PART 2</span>
+            <h2>⚡ Real-Time Commands</h2>
+            <p>Available in Part 2.</p>
+            <button disabled>Locked until Part 2</button>
+        </article>
+
+        <article class="pillar locked">
+            <span>🔒 FINAL POE</span>
+            <h2>🕸️ Mesh Routing</h2>
+            <p>Available in the Final POE.</p>
+            <button disabled>Locked until Final POE</button>
+        </article>
+    </section>
+
+    <section id="ingestion">
+        <h2>📊 Live Part 1 Dashboard</h2>
+
+        <div class="cards">
+            <article class="stat-card">
+                <p>Registered sensors</p>
+                <strong>@summary.RegisteredSensorCount</strong>
+            </article>
+
+            <article class="stat-card">
+                <p>Telemetry packets</p>
+                <strong>@summary.TelemetryCount</strong>
+            </article>
+
+            <article class="stat-card">
+                <p>Total power</p>
+                <strong>@summary.TotalPowerWatts W</strong>
+            </article>
+
+            <article class="stat-card">
+                <p>Historical average</p>
+                <strong>@summary.HistoricalAverage °C</strong>
+            </article>
+        </div>
+
+        <div class="panel">
+            <h2>➕ Register a sensor</h2>
+
+            <label>Device MAC / Unique ID</label>
+            <input @bind="form.MacAddress" placeholder="Example: ESP32-01-A1B2" />
+
+            <label>Deployment location</label>
+            <input @bind="form.DeploymentLocation" placeholder="Example: Hydroponic Zone A" />
+
+            <label>Sensor category</label>
+            <select @bind="form.Category">
+                @foreach (SensorCategory category in Enum.GetValues<SensorCategory>())
+                {
+                    <option value="@category">@category</option>
+                }
+            </select>
+
+            <button class="primary" @onclick="RegisterSensorAsync">
+                Register Sensor
+            </button>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(message))
+        {
+            <p class="message">@message</p>
+        }
+
+        <div class="panel">
+            <h2>🧪 Recursive deployment validation</h2>
+            <p>This checks the Facility → Zone → Node structure before deployment.</p>
+            <button @onclick="ValidateDeploymentAsync">Validate deployment</button>
+
+            @if (validation is not null)
+            {
+                <p class="message">
+                    @(validation.IsValid
+                        ? "✅ Deployment is correctly configured."
+                        : "⚠️ Deployment has configuration problems.")
+                </p>
+
+                @foreach (string problem in validation.Problems)
+                {
+                    <p class="problem">@problem</p>
+                }
+            }
+        </div>
+
+        <div class="panel">
+            <h2>📡 Registered sensors</h2>
+
+            @if (sensors.Count == 0)
+            {
+                <p>No sensors registered yet. Add your first sensor above.</p>
+            }
+            else
+            {
+                @foreach (SensorDevice sensor in sensors)
+                {
+                    <article class="sensor">
+                        <div>
+                            <h3>@sensor.MacAddress</h3>
+                            <p>
+                                <strong>Location:</strong> @sensor.DeploymentLocation<br />
+                                <strong>Category:</strong> @sensor.Category<br />
+                                <strong>Last telemetry:</strong>
+                                @(sensor.LastTelemetryAt?.ToLocalTime().ToString("dd MMM HH:mm")
+                                    ?? "No telemetry yet")
+                            </p>
+                        </div>
+
+                        <div class="actions">
+                            <button class="primary"
+                                    @onclick="() => GenerateTelemetryAsync(sensor.Id)">
+                                Generate Mock Telemetry
+                            </button>
+
+                            <InputFile OnChange="SelectFile" />
+
+                            @if (selectedFile is not null)
+                            {
+                                <button @onclick="() => UploadFileAsync(sensor.Id)">
+                                    Upload selected file
+                                </button>
+                            }
+                        </div>
+                    </article>
+                }
+            }
+        </div>
+
+        <div class="panel">
+            <h2>📈 Latest simulated telemetry</h2>
+
+            @if (telemetry.Count == 0)
+            {
+                <p>No telemetry generated yet.</p>
+            }
+            else
+            {
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>Value</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (TelemetryPacket<double> packet in telemetry)
+                        {
+                            <tr>
+                                <td>@packet.Category</td>
+                                <td>@packet.Payload @packet.Unit</td>
+                                <td>@packet.RecordedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm:ss")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </section>
+</div>
+
+@code {
+    // Holds the values typed into the sensor registration form.
+    private SensorRegistrationRequest form = new();
+
+    private List<SensorDevice> sensors = new();
+    private List<TelemetryPacket<double>> telemetry = new();
+    private DashboardSummary summary = new();
+    private DeploymentValidationResult? validation;
+    private IBrowserFile? selectedFile;
+    private string message = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // ASYNC API COMMUNICATION REQUIREMENT.
+        await RefreshDashboardAsync();
+    }
+
+    private async Task RefreshDashboardAsync()
+    {
+        sensors = await Http.GetFromJsonAsync<List<SensorDevice>>("api/sensors") ?? new();
+        telemetry = await Http.GetFromJsonAsync<List<TelemetryPacket<double>>>("api/sensors/telemetry") ?? new();
+        summary = await Http.GetFromJsonAsync<DashboardSummary>("api/sensors/dashboard") ?? new();
+    }
+
+    private async Task RegisterSensorAsync()
+    {
+        message = "";
+
+        if (string.IsNullOrWhiteSpace(form.MacAddress) ||
+            string.IsNullOrWhiteSpace(form.DeploymentLocation))
+        {
+            message = "⚠️ Enter a MAC/unique ID and a deployment location.";
+            return;
+        }
+
+        HttpResponseMessage response = await Http.PostAsJsonAsync("api/sensors", form);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            message = "⚠️ The sensor could not be registered. Check that the MAC/unique ID is not already used.";
+            return;
+        }
+
+        message = "✅ Sensor registered successfully.";
+        form = new SensorRegistrationRequest();
+        await RefreshDashboardAsync();
+    }
+
+    private async Task GenerateTelemetryAsync(Guid sensorId)
+    {
+        HttpResponseMessage response =
+            await Http.PostAsync($"api/sensors/{sensorId}/telemetry/generate", null);
+
+        message = response.IsSuccessStatusCode
+            ? "✅ Mock telemetry generated. Dashboard updated."
+            : "⚠️ Mock telemetry could not be generated.";
+
+        await RefreshDashboardAsync();
+    }
+
+    private void SelectFile(InputFileChangeEventArgs eventArgs)
+    {
+        selectedFile = eventArgs.File;
+        message = $"Selected file: {selectedFile.Name}";
+    }
+
+    private async Task UploadFileAsync(Guid sensorId)
+    {
+        if (selectedFile is null)
+        {
+            return;
+        }
+
+        using var formData = new MultipartFormDataContent();
+
+        using var fileContent = new StreamContent(
+            selectedFile.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024));
+
+        fileContent.Headers.ContentType =
+            new MediaTypeHeaderValue(selectedFile.ContentType);
+
+        formData.Add(fileContent, "file", selectedFile.Name);
+
+        HttpResponseMessage response =
+            await Http.PostAsync($"api/sensors/{sensorId}/upload", formData);
+
+        message = response.IsSuccessStatusCode
+            ? "✅ File uploaded successfully."
+            : "⚠️ Upload failed. Use a file below 10 MB.";
+
+        selectedFile = null;
+    }
+
+    private async Task ValidateDeploymentAsync()
+    {
+        validation = await Http.GetFromJsonAsync<DeploymentValidationResult>(
+            "api/sensors/deployment/validate");
+    }
+}
