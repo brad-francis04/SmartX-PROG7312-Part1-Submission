@@ -31,3 +31,5 @@ This is a .NET 10 Smart-X IoT simulation for Sensor Data Ingestion.
 MAC/Unique ID: ESP32-01-A1B2  
 Location: Hydroponic Zone A  
 Category: Environmental
+
+youtube link: https://www.youtube.com/watch?v=WUrveX6BjMY
