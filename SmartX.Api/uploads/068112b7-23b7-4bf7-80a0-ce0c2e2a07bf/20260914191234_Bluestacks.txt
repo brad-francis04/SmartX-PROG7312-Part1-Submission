@@ -1,0 +1,42 @@
+@echo off
+echo Looking for BlueStacks ADB port...
+
+:: Set the path to the BlueStacks config file
+set "confFile=C:\ProgramData\BlueStacks_nxt\bluestacks.conf"
+
+if not exist "%confFile%" (
+    echo Could not find bluestacks.conf at %confFile%.
+    echo Please make sure BlueStacks is installed and running.
+    pause
+    exit /b
+)
+
+:: Search the config file for the line containing the adb port and extract the number
+for /f "tokens=2 delims==" %%A in ('findstr /i "status.adb_port" "%confFile%"') do (
+    set "adbPort=%%~A"
+    goto :connect
+)
+
+echo Could not locate the ADB port in the config file.
+pause
+exit /b
+
+:connect
+:: Remove the quotes from the extracted port number
+set "adbPort=%adbPort:"=%"
+echo Found dynamic port: %adbPort%
+echo Connecting ADB...
+
+:: Point directly to the default Android SDK platform-tools path
+set "adbPath=%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe"
+
+if exist "%adbPath%" (
+    "%adbPath%" connect 127.0.0.1:%adbPort%
+) else (
+    echo Could not find adb.exe at %adbPath%.
+    echo If the Android SDK is installed elsewhere, you will need to update the script path.
+)
+
+echo.
+echo Connection attempt finished. You can now check Android Studio.
+pause

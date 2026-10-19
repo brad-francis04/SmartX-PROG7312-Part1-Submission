@@ -23,6 +23,9 @@ builder.Services.AddSwaggerGen();
 // Add our in-memory data service once for the whole application.
 builder.Services.AddSingleton<SmartXStore>();
 
+// Part 2: real-time command and telemetry processing.
+builder.Services.AddSingleton<CommandProcessingService>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
