@@ -34,58 +34,83 @@ Category: Environmental
 
 youtube link: https://www.youtube.com/watch?v=WUrveX6BjMY
 
-Smart-X IoT — Part 2: Real-Time Processing
+## Smart-X IoT — Part 2: Real-Time Processing
 
-Part 2 functionality
+### Features Implemented
 
-Real-time device commands, including TurnOn, TurnOff, StartPump, StopPump and Reset.
+- **Real-Time Commands**
+  - Issue commands to registered devices.
+  - Supported commands: `TurnOn`, `TurnOff`, `StartPump`, `StopPump` and `Reset`.
+  - Record command descriptions, timestamps and critical status.
+  - Undo the latest command.
 
-Command history and undo functionality.
+- **Telemetry Processing**
+  - Process normal telemetry using a FIFO queue (`Queue<T>`).
+  - Prioritise critical telemetry using `PriorityQueue<TElement, TPriority>`.
+  - Display queue counts and processed telemetry.
+  - Process critical telemetry before normal telemetry.
 
-FIFO processing of normal telemetry using Queue<T>.
+- **Historical Telemetry**
+  - Store telemetry readings by timestamp.
+  - Display historical readings, device IDs, values, units and timestamps.
+  - Use `SortedDictionary<DateTime, List<TelemetryPacket<double>>>` for historical storage.
 
-Critical telemetry processing using PriorityQueue<TElement, TPriority>.
+- **Device Management**
+  - Register sensors using MAC addresses and unique identifiers.
+  - Search devices by MAC address or deployment location.
+  - Filter devices by category.
+  - Filter devices by active-alert status.
+  - Track active alerts using `HashSet<Guid>`.
 
-Command history management using Stack<T>.
+- **Command History**
+  - Maintain command history using `Stack<T>`.
+  - Display command details and timestamps.
+  - Mark commands as undone.
 
-Device lookup using dictionaries keyed by unique device IDs and MAC addresses.
+- **Automated Insights**
+  - Identify devices with active alerts.
+  - Analyse sensor readings for configured thresholds.
+  - Detect repeated device searches.
+  - Recommend reviewing devices that receive repeated commands.
+  - Identify devices receiving repeated critical commands.
 
-Historical telemetry stored and retrieved using SortedDictionary<DateTime, List<TelemetryPacket<double>>>.
+### Data Structures and C# Concepts
 
-Active-alert tracking using HashSet<Guid>.
+The implementation demonstrates the following:
 
-Device searching by MAC address or deployment location.
+- `Queue<T>` — FIFO telemetry processing.
+- `PriorityQueue<TElement, TPriority>` — critical telemetry prioritisation.
+- `Stack<T>` — command history and undo operations.
+- `Dictionary<TKey, TValue>` — device lookup by unique identifier and MAC address.
+- `SortedDictionary<TKey, TValue>` — historical telemetry organised by timestamp.
+- `HashSet<T>` — unique active-alert tracking.
+- `List<T>` — collections of sensors, telemetry readings and commands.
+- **Generic types** — reusable telemetry data models.
+- **Jagged arrays** — historical reading batches.
+- **Multidimensional arrays** — simulated connectivity data.
+- **Operator overloading** — power meter calculations.
+- **Recursion** — deployment hierarchy validation.
 
-Filtering devices by category and active-alert status.
+### Demo Video
 
-Automated Insights based on sensor readings, active alerts, repeated searches and repeated commands.
+- **Smart-X IoT Part 2 Demonstration:** [Watch the demo video](PASTE_YOUR_YOUTUBE_LINK_HERE)
 
-Historical telemetry dashboard and processing status.
+### How to Test Part 2
 
-Data structures and implementation
+1. Open the Smart-X solution in Visual Studio.
+2. Start the API and client projects.
+3. Register a sensor on the Part 1 dashboard.
+4. Generate mock telemetry readings.
+5. Open the Real-Time Commands page.
+6. Issue commands to registered devices.
+7. Generate normal and critical telemetry and verify that critical telemetry is processed first.
+8. Refresh Historical Telemetry to view stored readings.
+9. Test device searching, category filtering and active-alert filtering.
+10. Repeat commands and refresh Automated Insights to view recommendations.
+11. Undo the latest command and verify its status in command history.
 
-The application uses generic collections, arrays, operator overloading and recursion to support telemetry processing, device management and deployment validation.
+### Notes
 
-Demo video
-
-Smart-X IoT Part 2 demonstration: Watch the demo video
-
-Testing
-
-Run the API and client projects in Visual Studio.
-
-Register sensors and generate mock telemetry on the Part 1 dashboard.
-
-Open Real-Time Commands to issue commands and inspect command history.
-
-Generate normal and critical telemetry and verify that critical telemetry is processed first.
-
-Refresh Historical Telemetry to inspect stored readings.
-
-Test device search, category filters and active-alert filters.
-
-Repeat commands and refresh Automated Insights to view recommendations.
-
-Undo the latest command and verify its status in command history.
-
-Sensor readings and recommendation thresholds are simulated for demonstration purposes.
+- Sensor telemetry is simulated for demonstration purposes.
+- Environmental and power-consumption thresholds are illustrative recommendation rules.
+- The application uses in-memory storage; data may reset when the API restarts.
