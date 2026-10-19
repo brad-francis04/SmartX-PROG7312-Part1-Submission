@@ -1,0 +1,579 @@
+﻿@page "/commands"
+@using System.Net.Http.Json
+@using SmartX.Shared
+@inject HttpClient Http
+
+<PageTitle>Smart-X Real-Time Commands</PageTitle>
+
+<div class="container-fluid py-4">
+    <h1>⚡ Real-Time Command Stream</h1>
+    <p>Part 2 — Issue commands to registered Smart-X devices.</p>
+    <div class="card p-3 mb-4">
+        <h3>💡 Suggested Actions &amp; Automated Insights</h3>
+
+        @if (suggestedActions.Count == 0)
+        {
+            <p>Loading recommendations...</p>
+        }
+        else
+        {
+            <ul>
+                @foreach (var suggestion in suggestedActions)
+                {
+                    <li>@suggestion</li>
+                }
+            </ul>
+        }
+
+        <button class="btn btn-outline-primary"
+                @onclick="LoadSuggestedActionsAsync"
+                disabled="@isBusy">
+            Refresh Suggestions
+        </button>
+    </div>
+    <div class="card p-3 mb-4">
+    <h3>Real-Time Processing Status</h3>
+
+    <p>Normal telemetry queue: <strong>@normalQueueCount</strong></p>
+    <p>Critical alerts queue: <strong>@criticalQueueCount</strong></p>
+    <p>Processed telemetry: <strong>@processedTelemetryCount</strong></p>
+
+    <button class="btn btn-outline-primary"
+            @onclick="RefreshQueueStatusAsync"
+            disabled="@isBusy">
+        Refresh processing status
+    </button>
+    <button class="btn btn-primary mt-2"
+        @onclick="ProcessNextTelemetryAsync"
+        disabled="@isBusy">
+    Process Next Telemetry
+</button>
+</div>
+    <div class="card p-3 mb-4">
+        <h3>📊 Historical Telemetry</h3>
+        <p>Review previously recorded readings from registered devices.</p>
+
+        <button class="btn btn-outline-primary mb-3"
+                @onclick="LoadHistoricalTelemetryAsync"
+                disabled="@isBusy">
+            Refresh Historical Telemetry
+        </button>
+
+        @if (historicalTelemetry.Count == 0)
+        {
+            <p>No historical readings loaded. Click refresh to load available readings.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Device ID</th>
+                            <th>Reading</th>
+                            <th>Recorded At (UTC)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var packet in historicalTelemetry)
+                        {
+                            <tr>
+                                <td>@packet.SensorId</td>
+                                <td>@packet.Payload @packet.Unit</td>
+                                <td>@packet.RecordedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <div class="alert @(isError ? "alert-warning" : "alert-success")">
+            @message
+        </div>
+    }
+
+    <div class="card p-3 mb-4">
+        <h3>Registered devices</h3>
+        <input class="form-control mb-3"
+               placeholder="Search by MAC address or location..."
+               @bind="searchTerm"
+               @bind:event="oninput" />
+
+        <button class="btn btn-outline-primary mb-3"
+                @onclick="SearchSensorsAsync"
+                disabled="@isBusy">
+            Search Devices
+        </button>
+        <select class="form-select mb-3" @bind="selectedCategory">
+            <option value="">All categories</option>
+            @foreach (SensorCategory category in Enum.GetValues<SensorCategory>())
+            {
+                <option value="@category">@category</option>
+            }
+        </select>
+        <select class="form-select mb-3" @bind="selectedAlertStatus">
+            <option value="">All alert statuses</option>
+            <option value="true">Active alerts only</option>
+            <option value="false">No active alerts</option>
+        </select>
+
+        @if (sensors.Count == 0)
+        {
+            <p>No sensors found. Register a sensor on the Part 1 dashboard first.</p>
+        }
+        else
+        {
+            <label for="sensorSelect" class="form-label">Select device</label>
+            <select id="sensorSelect" class="form-select mb-3"
+                    @bind="selectedSensorId">
+                <option value="">-- Select a device --</option>
+                @foreach (var sensor in sensors)
+                {
+                    <option value="@sensor.Id">
+                        @sensor.MacAddress — @sensor.DeploymentLocation
+                        (@sensor.Category)
+                    </option>
+                }
+            </select>
+
+            <label for="commandSelect" class="form-label">Command</label>
+            <select id="commandSelect" class="form-select mb-3"
+                    @bind="selectedCommand">
+                @foreach (DeviceCommandType commandType
+                    in Enum.GetValues<DeviceCommandType>())
+                {
+                    <option value="@commandType">@commandType</option>
+                }
+            </select>
+
+            <label for="description" class="form-label">Description</label>
+            <input id="description" class="form-control mb-3"
+                   @bind="description"
+                   placeholder="Describe the requested action" />
+
+            <div class="form-check mb-3">
+                <input id="critical" class="form-check-input"
+                       type="checkbox" @bind="isCritical" />
+                <label class="form-check-label" for="critical">
+                    Mark as critical
+                </label>
+            </div>
+
+            <button class="btn btn-primary"
+                    @onclick="IssueCommandAsync"
+                    disabled="@(!selectedSensorId.HasValue || isBusy)">
+                Issue command
+            </button>
+            <button class="btn btn-outline-danger mt-2"
+                    @onclick="ActivateSelectedAlertAsync"
+                    disabled="@(!selectedSensorId.HasValue || isBusy)">
+                Activate Alert for Selected Device
+            </button>
+        }
+    </div>
+
+    <div class="card p-3 mb-4">
+        <h3>Command history</h3>
+
+        <button class="btn btn-outline-secondary mb-3"
+                @onclick="RefreshAsync" disabled="@isBusy">
+            Refresh history
+        </button>
+
+        @if (history.Count == 0)
+        {
+            <p>No commands have been recorded yet.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Device</th>
+                            <th>Command</th>
+                            <th>Description</th>
+                            <th>Critical</th>
+                            <th>Issued at (UTC)</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var command in history)
+                        {
+                            <tr>
+                                <td>@command.DeviceName</td>
+                                <td>@command.CommandType</td>
+                                <td>@command.Description</td>
+                                <td>@(command.IsCritical ? "Yes" : "No")</td>
+                                <td>@command.IssuedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                <td>@(command.IsUndone ? "Undone" : "Recorded")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <button class="btn btn-warning"
+                    @onclick="UndoLastCommandAsync"
+                    disabled="@isBusy">
+                Undo latest command
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    private List<SensorDevice> sensors = new();
+    private List<DeviceCommand> history = new();
+    private List<TelemetryPacket<double>> historicalTelemetry = new();
+    private string searchTerm = "";
+    private string selectedCategory = "";
+    private string selectedAlertStatus = "";
+    private List<string> suggestedActions = new();
+
+
+    private int normalQueueCount;
+    private int criticalQueueCount;
+    private int processedTelemetryCount;
+
+    private Guid? selectedSensorId;
+    private DeviceCommandType selectedCommand = DeviceCommandType.TurnOn;
+    private string description = "";
+    private bool isCritical;
+    private bool isBusy;
+    private bool isError;
+    private string message = "";
+
+    private class QueueStatus
+    {
+        public int NormalQueueCount { get; set; }
+        public int CriticalQueueCount { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAsync();
+        await LoadSuggestedActionsAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        isBusy = true;
+        message = "";
+
+        try
+        {
+            sensors = await Http.GetFromJsonAsync<List<SensorDevice>>(
+                "api/sensors") ?? new();
+
+            history = await Http.GetFromJsonAsync<List<DeviceCommand>>(
+                "api/commands/history") ?? new();
+
+            await RefreshQueueStatusAsync();
+        }
+        catch (HttpRequestException)
+        {
+            isError = true;
+            message = "Could not connect to the API. Check that the API is running.";
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private async Task RefreshQueueStatusAsync()
+    {
+        try
+        {
+            var queueStatus = await Http.GetFromJsonAsync<QueueStatus>(
+                "api/telemetry-processing/queue-status");
+
+            if (queueStatus is not null)
+            {
+                normalQueueCount = queueStatus.NormalQueueCount;
+                criticalQueueCount = queueStatus.CriticalQueueCount;
+            }
+
+            var processed =
+                await Http.GetFromJsonAsync<List<TelemetryPacket<double>>>(
+                    "api/telemetry-processing/processed");
+
+            processedTelemetryCount = processed?.Count ?? 0;
+        }
+        catch (HttpRequestException)
+        {
+            isError = true;
+            message = "Could not load telemetry processing status.";
+        }
+    }
+    private async Task ProcessNextTelemetryAsync()
+{
+    isBusy = true;
+    message = "";
+
+    try
+    {
+        var response = await Http.PostAsync(
+            "api/telemetry-processing/process-next", null);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            isError = true;
+            message = "No telemetry is waiting to be processed.";
+            return;
+        }
+
+        var packet =
+            await response.Content.ReadFromJsonAsync<TelemetryPacket<double>>();
+
+        isError = false;
+        message = packet is null
+            ? "Telemetry processed."
+            : $"Telemetry processed for device {packet.SensorId}.";
+
+        await RefreshQueueStatusAsync();
+    }
+    catch (HttpRequestException)
+    {
+        isError = true;
+        message = "Could not connect to the API.";
+    }
+    finally
+    {
+        isBusy = false;
+    }
+}
+
+    private async Task IssueCommandAsync()
+    {
+        if (!selectedSensorId.HasValue)
+        {
+            message = "Select a registered device first.";
+            isError = true;
+            return;
+        }
+
+        isBusy = true;
+        message = "";
+
+        var command = new DeviceCommand
+        {
+            SensorId = selectedSensorId.Value,
+            CommandType = selectedCommand,
+            Description = description.Trim(),
+            IsCritical = isCritical
+        };
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync(
+                "api/commands", command);
+
+            var result =
+                await response.Content.ReadFromJsonAsync<CommandResult>();
+
+            if (!response.IsSuccessStatusCode || result?.Success != true)
+            {
+                isError = true;
+                message = result?.Message ?? "The command could not be recorded.";
+                return;
+            }
+
+            isError = false;
+            message = result.Message;
+            description = "";
+            isCritical = false;
+
+            history = await Http.GetFromJsonAsync<List<DeviceCommand>>(
+                "api/commands/history") ?? new();
+
+            await RefreshQueueStatusAsync();
+        }
+        catch (HttpRequestException)
+        {
+            isError = true;
+            message = "Could not connect to the API.";
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private async Task UndoLastCommandAsync()
+    {
+        isBusy = true;
+        message = "";
+
+        try
+        {
+            var response = await Http.PostAsync("api/commands/undo", null);
+
+            var result =
+                await response.Content.ReadFromJsonAsync<CommandResult>();
+
+            if (!response.IsSuccessStatusCode || result?.Success != true)
+            {
+                isError = true;
+                message = result?.Message ?? "There was no command to undo.";
+                return;
+            }
+
+            isError = false;
+            message = result.Message;
+
+            history = await Http.GetFromJsonAsync<List<DeviceCommand>>(
+                "api/commands/history") ?? new();
+        }
+        catch (HttpRequestException)
+        {
+            isError = true;
+            message = "Could not connect to the API.";
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+    private async Task LoadSuggestedActionsAsync()
+    {
+        try
+        {
+            suggestedActions =
+                await Http.GetFromJsonAsync<List<string>>(
+                    "api/sensors/suggested-actions") ?? new();
+        }
+        catch (HttpRequestException)
+        {
+            suggestedActions = new()
+        {
+            "Could not load recommendations. Check that the API is running."
+        };
+        }
+    }
+    private async Task SearchSensorsAsync()
+    {
+        try
+        {
+            sensors = await Http.GetFromJsonAsync<List<SensorDevice>>(
+                "api/sensors") ?? new();
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                await Http.PostAsJsonAsync(
+                    "api/sensors/search-history", searchTerm);
+
+                sensors = sensors
+                    .Where(sensor =>
+                        sensor.MacAddress.Contains(
+                            searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                        sensor.DeploymentLocation.Contains(
+                            searchTerm, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+            }
+
+            if (!string.IsNullOrWhiteSpace(selectedCategory) &&
+                Enum.TryParse<SensorCategory>(
+                    selectedCategory, out var category))
+            {
+                sensors = sensors
+                    .Where(sensor => sensor.Category == category)
+                    .ToList();
+            }
+            if (!string.IsNullOrWhiteSpace(selectedAlertStatus) &&
+                bool.TryParse(selectedAlertStatus, out var hasActiveAlert))
+            {
+                var activeAlerts = await Http.GetFromJsonAsync<List<SensorDevice>>(
+                    "api/sensors/alerts/active") ?? new();
+
+                var activeAlertIds = activeAlerts
+                    .Select(sensor => sensor.Id)
+                    .ToHashSet();
+
+                sensors = sensors
+                    .Where(sensor =>
+                        activeAlertIds.Contains(sensor.Id) == hasActiveAlert)
+                    .ToList();
+            }
+
+            await LoadSuggestedActionsAsync();
+
+            isError = false;
+            message = $"Search completed. Found {sensors.Count} matching device(s).";
+        }
+        catch (HttpRequestException)
+        {
+            isError = true;
+            message = "Could not complete the search. Check that the API is running.";
+        }
+    }
+    private async Task ActivateSelectedAlertAsync()
+    {
+        if (!selectedSensorId.HasValue)
+        {
+            message = "Select a device first.";
+            isError = true;
+            return;
+        }
+
+        isBusy = true;
+        message = "";
+
+        try
+        {
+            var response = await Http.PostAsync(
+                $"api/sensors/{selectedSensorId.Value}/alerts/activate",
+                null);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                isError = true;
+                message = "Could not activate the alert.";
+                return;
+            }
+
+            isError = false;
+            message = "Alert activated for the selected device.";
+
+            await LoadSuggestedActionsAsync();
+        }
+        catch (HttpRequestException)
+        {
+            isError = true;
+            message = "Could not connect to the API.";
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+    private async Task LoadHistoricalTelemetryAsync()
+    {
+        isBusy = true;
+        message = "";
+
+        try
+        {
+            historicalTelemetry =
+                await Http.GetFromJsonAsync<List<TelemetryPacket<double>>>(
+                    "api/sensors/telemetry/history") ?? new();
+
+            isError = false;
+            message = $"Loaded {historicalTelemetry.Count} historical reading(s).";
+        }
+        catch (HttpRequestException)
+        {
+            isError = true;
+            message = "Could not load historical telemetry. Check that the API is running.";
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+}

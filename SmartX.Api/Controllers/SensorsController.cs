@@ -10,16 +10,27 @@ public class SensorsController : ControllerBase
 {
     private readonly SmartXStore _store;
     private readonly IWebHostEnvironment _environment;
-
-    public SensorsController(SmartXStore store, IWebHostEnvironment environment)
+    private readonly CommandProcessingService _processingService;
+    public SensorsController(
+     SmartXStore store,
+     IWebHostEnvironment environment,
+     CommandProcessingService processingService)
     {
         _store = store;
         _environment = environment;
+        _processingService = processingService;
     }
 
     [HttpGet]
-    public ActionResult<List<SensorDevice>> GetSensors()
+    public ActionResult<List<SensorDevice>> GetSensors(
+      [FromQuery] SensorCategory? category,
+      [FromQuery] bool? hasActiveAlert)
     {
+        if (category.HasValue || hasActiveAlert.HasValue)
+        {
+            return Ok(_store.FilterSensors(category, hasActiveAlert));
+        }
+
         return Ok(_store.GetSensors());
     }
 
@@ -51,6 +62,9 @@ public class SensorsController : ControllerBase
             return NotFound("Sensor not found.");
         }
 
+        // Add generated telemetry to the Part 2 FIFO queue.
+        _processingService.EnqueueTelemetry(packet);
+
         return Ok(packet);
     }
 
@@ -58,6 +72,118 @@ public class SensorsController : ControllerBase
     public ActionResult<List<TelemetryPacket<double>>> GetTelemetry()
     {
         return Ok(_store.GetTelemetry());
+    }
+    [HttpGet("telemetry/history")]
+    public ActionResult<List<TelemetryPacket<double>>> GetHistoricalTelemetry()
+    {
+        return Ok(_store.GetHistoricalTelemetry());
+    }
+    [HttpGet("alerts/active")]
+    public ActionResult<List<SensorDevice>> GetActiveAlertSensors()
+    {
+        return Ok(_store.GetActiveAlertSensors());
+    }
+    [HttpPost("search-history")]
+    public IActionResult RecordSearch([FromBody] string searchTerm)
+    {
+        _store.RecordSensorSearch(searchTerm);
+        return Ok(new { Message = "Search recorded successfully." });
+    }
+
+    [HttpGet("search-history")]
+    public ActionResult<List<string>> GetSearchHistory()
+    {
+        return Ok(_store.GetSearchHistory());
+    }
+    [HttpGet("suggested-actions")]
+    public ActionResult<List<string>> GetSuggestedActions()
+    {
+        var suggestions = _store.GetSuggestedActions();
+
+        var commands = _processingService.GetCommandHistory()
+            .Where(command => !command.IsUndone)
+            .ToList();
+
+        // Recommend reviewing devices that receive the same command repeatedly.
+        var repeatedCommands = commands
+            .GroupBy(command => new
+            {
+                command.SensorId,
+                command.CommandType
+            })
+            .Where(group => group.Count() >= 3);
+
+        foreach (var group in repeatedCommands)
+        {
+            var sensor = _store.GetSensor(group.Key.SensorId);
+
+            string deviceName = sensor?.DeploymentLocation
+                ?? group.First().DeviceName;
+
+            suggestions.Add(
+                $"Review {deviceName}: the {group.Key.CommandType} command has been issued {group.Count()} times.");
+        }
+
+        // Recommend reviewing devices that have received repeated critical commands.
+        var repeatedCriticalCommands = commands
+            .Where(command => command.IsCritical)
+            .GroupBy(command => command.SensorId)
+            .Where(group => group.Count() >= 2);
+
+        foreach (var group in repeatedCriticalCommands)
+        {
+            var sensor = _store.GetSensor(group.Key);
+
+            string deviceName = sensor?.DeploymentLocation
+                ?? group.First().DeviceName;
+
+            suggestions.Add(
+                $"Investigate {deviceName}: this device has received {group.Count()} critical commands.");
+        }
+
+        // Remove the default message if a command-history recommendation was generated.
+        if (suggestions.Any(suggestion =>
+            suggestion.Contains("command has been issued") ||
+            suggestion.Contains("critical commands")))
+        {
+            suggestions.RemoveAll(suggestion =>
+                suggestion.StartsWith("No immediate recommendations."));
+        }
+
+        return Ok(suggestions.Distinct().ToList());
+    }
+    [HttpPost("{sensorId:guid}/alerts/activate")]
+    public IActionResult ActivateAlert(Guid sensorId)
+    {
+        if (_store.GetSensor(sensorId) is null)
+        {
+            return NotFound("Sensor not found.");
+        }
+
+        _store.AddActiveAlert(sensorId);
+
+        return Ok(new
+        {
+            Message = "Alert activated.",
+            SensorId = sensorId
+        });
+    }
+
+    [HttpDelete("{sensorId:guid}/alerts/clear")]
+    public IActionResult ClearAlert(Guid sensorId)
+    {
+        if (_store.GetSensor(sensorId) is null)
+        {
+            return NotFound("Sensor not found.");
+        }
+
+        _store.ClearActiveAlert(sensorId);
+
+        return Ok(new
+        {
+            Message = "Alert cleared.",
+            SensorId = sensorId
+        });
     }
 
     [HttpGet("dashboard")]
