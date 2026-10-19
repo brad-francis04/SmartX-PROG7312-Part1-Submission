@@ -93,7 +93,7 @@ The implementation demonstrates the following:
 
 ### Demo Video
 
-- **Smart-X IoT Part 2 Demonstration:** [Watch the demo video](PASTE_YOUR_YOUTUBE_LINK_HERE)
+- **Smart-X IoT Part 2 Demonstration:** (https://www.youtube.com/watch?v=GIKVnmvGYpo)
 
 ### How to Test Part 2
 
