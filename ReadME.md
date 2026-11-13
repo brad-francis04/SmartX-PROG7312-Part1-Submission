@@ -255,4 +255,4 @@ The MST demonstration used two wireless connections:
 
 ## Demo Video
 
-- Smart-X IoT Part 3 Demonstration: [Insert Part 3 YouTube link here]
+- Smart-X IoT Part 3 Demonstration: https://youtu.be/bsHqNYpX8VY
