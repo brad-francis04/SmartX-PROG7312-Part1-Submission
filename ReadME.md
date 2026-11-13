@@ -139,7 +139,7 @@ The implementation demonstrates the following:
 
 - Detect disconnected sensors within the network.
 
-##Network Routing
+## Network Routing
 
 - Find a route from a selected sensor to the configured gateway.
 
