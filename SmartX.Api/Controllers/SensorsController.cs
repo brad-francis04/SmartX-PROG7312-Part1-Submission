@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using SmartX.Api.Network;
+using Microsoft.AspNetCore.Mvc;
 using SmartX.Api.Services;
 using SmartX.Shared;
 
@@ -11,14 +12,17 @@ public class SensorsController : ControllerBase
     private readonly SmartXStore _store;
     private readonly IWebHostEnvironment _environment;
     private readonly CommandProcessingService _processingService;
+    private readonly TelemetryTreeService _telemetryTree;
     public SensorsController(
-     SmartXStore store,
-     IWebHostEnvironment environment,
-     CommandProcessingService processingService)
+    SmartXStore store,
+    IWebHostEnvironment environment,
+    CommandProcessingService processingService,
+    TelemetryTreeService telemetryTree)
     {
         _store = store;
         _environment = environment;
         _processingService = processingService;
+        _telemetryTree = telemetryTree;
     }
 
     [HttpGet]
@@ -65,9 +69,19 @@ public class SensorsController : ControllerBase
         // Add generated telemetry to the Part 2 FIFO queue.
         _processingService.EnqueueTelemetry(packet);
 
+        // Also store the reading in the Part 3 AVL tree.
+        var historicalReading = new HistoricalTelemetryRecord
+        {
+            SensorId = packet.SensorId.ToString(),
+            MetricName = packet.Category.ToString(),
+            Value = packet.Payload,
+            Timestamp = new DateTimeOffset(packet.RecordedAt)
+        };
+
+        _telemetryTree.AddReading(historicalReading);
+
         return Ok(packet);
     }
-
     [HttpGet("telemetry")]
     public ActionResult<List<TelemetryPacket<double>>> GetTelemetry()
     {

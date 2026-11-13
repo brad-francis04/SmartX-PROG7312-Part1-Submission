@@ -1,5 +1,6 @@
 
 using SmartX.Api.Services;
+using SmartX.Api.Network;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +26,11 @@ builder.Services.AddSingleton<SmartXStore>();
 
 // Part 2: real-time command and telemetry processing.
 builder.Services.AddSingleton<CommandProcessingService>();
+
+// Part 3: Network topology, routing and historical telemetry.
+builder.Services.AddSingleton<NetworkGraphService>();
+builder.Services.AddSingleton<NetworkRoutingService>();
+builder.Services.AddSingleton<TelemetryTreeService>();
 
 var app = builder.Build();
 
