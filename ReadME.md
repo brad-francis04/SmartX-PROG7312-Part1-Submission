@@ -114,3 +114,145 @@ The implementation demonstrates the following:
 - Sensor telemetry is simulated for demonstration purposes.
 - Environmental and power-consumption thresholds are illustrative recommendation rules.
 - The application uses in-memory storage; data may reset when the API restarts.
+
+## Smart-X IoT — Part 3: Wireless Mesh Network and Historical Telemetry
+
+### Features Implemented
+
+## Network Topology Dashboard
+
+- Display registered sensors as nodes in a wireless mesh network.
+
+- Display wireless connections between sensors.
+
+- View the network topology through an interactive dashboard.
+
+- Configure a selected sensor as the network gateway.
+
+## Graph Traversal
+
+- Implement Breadth-First Search (BFS) to explore connected sensors.
+
+- Implement Depth-First Search (DFS) to traverse the network.
+
+- Identify connected devices starting from a selected sensor or gateway.
+
+- Detect disconnected sensors within the network.
+
+##Network Routing
+
+- Find a route from a selected sensor to the configured gateway.
+
+- Display the calculated route through the network.
+
+- Use wireless connection information to represent the network structure.
+
+## Minimum Spanning Tree (MST)
+
+- Calculate a Minimum Spanning Tree for the wireless network.
+
+- Use connection power costs when evaluating network links.
+
+- Calculate the total power cost of the selected spanning network.
+
+- Demonstrate a lower-cost network connection structure.
+
+## Historical Telemetry Using an AVL Tree
+
+- Store historical telemetry readings in an AVL tree.
+
+- Organise readings using timestamps.
+
+- Retrieve historical readings for a selected sensor.
+
+- Search readings within a specified start and end date/time.
+
+- Maintain organised historical telemetry for efficient range queries.
+
+## Data Structures and Algorithms
+
+### The Part 3 implementation demonstrates:
+
+- Graph — represents sensors and wireless connections.
+
+- Adjacency List — stores connections between network nodes.
+
+- Breadth-First Search (BFS) — explores the network level by level.
+
+- Depth-First Search (DFS) — explores connected nodes through traversal.
+
+- Queue — supports BFS traversal.
+
+- Dictionary — stores network nodes, connections and traversal information.
+
+- Minimum Spanning Tree (MST) — identifies a spanning network using connection power costs.
+
+- Prim's Algorithm — used for the MST calculation.
+
+- AVL Tree — stores timestamped historical telemetry.
+
+- Tree Rotations — maintains AVL tree balance during insertion.
+
+- Date/Time Range Queries — retrieves historical readings within a selected period.
+
+## Part 3 Demonstration
+
+### The Part 3 demonstration uses three registered sensors:
+
+- New York — configured as the gateway.
+
+- Cape Town — connected sensor.
+
+- Joburg — connected sensor.
+
+The demonstration includes gateway configuration, BFS and DFS traversal, disconnected sensor detection, route finding, MST calculation and historical telemetry searches.
+
+The MST demonstration used two wireless connections:
+
+| Connection | Distance | Power Cost |
+|---|---:|---:|
+| First connection | 5 | 5 |
+| Second connection | 10 | 7 |
+| **Total power cost** | | **12** |
+
+## How to Test Part 3
+
+1. Open the Smart-X solution in Visual Studio.
+
+2. Start the API and client projects.
+
+3. Register the sensors required for the network demonstration.
+
+4. Open the Mesh Routing dashboard.
+
+5. Add wireless connections between the registered sensors.
+
+6. Select New York as the network gateway.
+
+7. Test BFS and DFS traversal.
+
+8. Test disconnected sensor detection.
+
+9. Select a sensor and find its route to the gateway.
+
+10. Run the Minimum Spanning Tree calculation and view the total power cost.
+
+11. Generate telemetry readings for a selected sensor.
+
+12. Open historical telemetry and select a sensor.
+
+13.Enter a start and end date/time to retrieve historical readings.
+
+## Notes
+
+- Sensor telemetry is simulated for demonstration purposes.
+
+- Network nodes and wireless connections are maintained in application memory.
+
+- Historical telemetry is stored using an AVL tree.
+
+- In-memory data may reset when the API restarts.
+
+## Demo Video
+
+- Smart-X IoT Part 3 Demonstration: [Insert Part 3 YouTube link here]
